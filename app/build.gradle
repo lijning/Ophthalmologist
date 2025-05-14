@@ -1,0 +1,15 @@
+apply plugin: 'com.android.application'
+
+dependencies {
+    implementation 'org.opencv:opencv-android:4.5.3'
+    implementation 'androidx.recyclerview:recyclerview:1.2.1'
+}
+
+android {
+    compileSdkVersion 33
+    defaultConfig {
+        applicationId "com.ophthalmologist"
+        minSdkVersion 21
+        targetSdkVersion 33
+    }
+}

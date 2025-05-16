@@ -1,0 +1,26 @@
+# Android 构建产物
+/build/
+/app/build/
+
+# Gradle 缓存
+.gradle/
+
+# 本地属性（包含SDK路径等）
+local.properties
+
+# IntelliJ IDE 配置
+.idea/
+*.iml
+
+# Gradle 包装器脚本（如果不需要版本控制）
+!gradlew
+!gradlew.bat
+
+# APK 文件
+*.apk
+
+# 日志文件
+*.log
+
+# 临时文件
+*.tmp

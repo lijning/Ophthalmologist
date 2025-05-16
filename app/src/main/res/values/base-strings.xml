@@ -16,13 +16,14 @@
 -->
 
 <resources>
-    <string name="app_name">CardView Sample</string>
+    <string name="app_name">Ophthalmologist</string>
     <string name="intro_message">
         <![CDATA[
         
             
-            This sample demonstrates how to use CardView introduced in the support library in
-            Android 5.0.
+            欢迎使用Ophthalmologist应用程序！
+
+            本应用程序旨在帮助眼科医生进行眼部照片的合并和处理。
             
         
         ]]>

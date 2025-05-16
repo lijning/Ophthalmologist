@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <Button
+        android:id="@+id/btn_upload_images"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="上传图片（最多9张）"/>
+
+    <GridView
+        android:id="@+id/gv_image_preview"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="16dp"
+        android:numColumns="3"
+        android:verticalSpacing="8dp"
+        android:horizontalSpacing="8dp"/>
+
+    <Button
+        android:id="@+id/btn_merge_images"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="合并图片"/>
+
+    <ProgressBar
+        android:id="@+id/pb_merging"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:visibility="gone"/>
+
+    <Button
+        android:id="@+id/btn_download_result"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="下载结果"
+        android:visibility="gone"/>
+
+</LinearLayout>

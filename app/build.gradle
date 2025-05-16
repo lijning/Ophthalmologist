@@ -1,15 +1,24 @@
-apply plugin: 'com.android.application'
-
-dependencies {
-    implementation 'org.opencv:opencv-android:4.5.3'
-    implementation 'androidx.recyclerview:recyclerview:1.2.1'
+plugins {
+    id 'com.android.application'
 }
 
 android {
+    namespace "com.ophthalmologist"
     compileSdkVersion 33
     defaultConfig {
         applicationId "com.ophthalmologist"
         minSdkVersion 21
         targetSdkVersion 33
     }
+    sourceCompatibility = '11'
+    targetCompatibility = '11'
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.annotation:annotation:1.6.0'
 }

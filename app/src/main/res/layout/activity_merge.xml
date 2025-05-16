@@ -35,6 +35,13 @@
         android:layout_marginTop="8dp"
         android:visibility="gone"/>
 
+    <ImageView
+        android:id="@+id/iv_merged_result"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:contentDescription="合并结果图片"/>
+
     <Button
         android:id="@+id/btn_download_result"
         android:layout_width="match_parent"

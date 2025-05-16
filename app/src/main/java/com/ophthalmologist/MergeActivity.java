@@ -32,6 +32,7 @@ import android.widget.SimpleAdapter;
 public class MergeActivity extends AppCompatActivity {
 
     private static final int MAX_IMAGES = 9;
+    private Bitmap mergedBitmap; // 保存合并后的Bitmap
     private GridView gvImagePreview;
     private ProgressBar pbMerging;
     private Button btnUploadImages, btnMergeImages, btnDownloadResult;
@@ -167,7 +168,10 @@ public class MergeActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     pbMerging.setVisibility(View.GONE);
                     btnDownloadResult.setVisibility(View.VISIBLE);
-                    // 可添加展示合并结果的逻辑
+                    // 展示合并结果到ImageView
+                    ImageView ivMergedResult = findViewById(R.id.iv_merged_result);
+                    ivMergedResult.setImageBitmap(mergedBitmap);
+                    // 保存合并后的Bitmap到成员变量
                 });
             } catch (Exception e) {
                 e.printStackTrace();
@@ -180,12 +184,15 @@ public class MergeActivity extends AppCompatActivity {
     }
 
     private void saveMergedImage() {
-        // 示例：保存到相册
+        if (mergedBitmap == null) {
+            Toast.makeText(this, "无合并结果可保存", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        // 保存到相册
         File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
         File file = new File(storageDir, "merged_eye_photos_" + System.currentTimeMillis() + ".jpg");
         try (FileOutputStream fos = new FileOutputStream(file)) {
-            // 假设mergedBitmap是合并后的Bitmap
-            // mergedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos);
+            mergedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos); // 实际保存Bitmap
             Toast.makeText(this, "保存成功：" + file.getPath(), Toast.LENGTH_LONG).show();
         } catch (IOException e) {
             e.printStackTrace();

@@ -1,10 +1,11 @@
 plugins {
     id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
 }
 
 android {
     namespace "com.ophthalmologist"
-    compileSdkVersion 33
+    compileSdk 34
     defaultConfig {
         applicationId "com.ophthalmologist"
         minSdkVersion 21
@@ -16,9 +17,11 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
 }
 
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.annotation:annotation:1.6.0'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.8.0'
 }

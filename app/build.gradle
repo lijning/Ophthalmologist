@@ -24,4 +24,5 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.annotation:annotation:1.6.0'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.8.0'
+    implementation 'com.google.mlkit:face-detection:17.6.0'
 }

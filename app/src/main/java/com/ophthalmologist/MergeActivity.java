@@ -28,11 +28,19 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.widget.ImageView;
 import android.widget.SimpleAdapter;
+import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.face.Face;
+import com.google.mlkit.vision.face.FaceDetection;
+import com.google.mlkit.vision.face.FaceDetector;
+import com.google.mlkit.vision.face.FaceDetectorOptions;
+import com.google.mlkit.vision.face.Landmark;
+import com.google.android.gms.tasks.Tasks;
 
 public class MergeActivity extends AppCompatActivity {
 
     private static final int MAX_IMAGES = 9;
     private Bitmap mergedBitmap; // 保存合并后的Bitmap
+    private FaceDetector faceDetector; // ML Kit人脸检测器
     private GridView gvImagePreview;
     private ProgressBar pbMerging;
     private Button btnUploadImages, btnMergeImages, btnDownloadResult;
@@ -90,9 +98,17 @@ public class MergeActivity extends AppCompatActivity {
         imageAdapter = new SimpleAdapter(this,
                 new ArrayList<>(),
                 R.layout.item_image,
-                new String[]{"image"},
+                new String[]{
+"image"},
                 new int[]{R.id.iv_item_image});
         gvImagePreview.setAdapter(imageAdapter);
+
+        // 初始化ML Kit人脸检测器
+        FaceDetectorOptions options = new FaceDetectorOptions.Builder()
+                .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
+                .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
+                .build();
+        faceDetector = FaceDetection.getClient(options);
 
         btnUploadImages.setOnClickListener(v -> checkStoragePermission());
         btnMergeImages.setOnClickListener(v -> mergeImages());
@@ -157,13 +173,54 @@ public class MergeActivity extends AppCompatActivity {
                 Canvas canvas = new Canvas(mergedBitmap);
 
                 for (int i = 0; i < selectedImageUris.size() && i < MAX_IMAGES; i++) {
-                    InputStream inputStream = getContentResolver().openInputStream(selectedImageUris.get(i));
-                    Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-                    Bitmap scaledBitmap = Bitmap.createScaledBitmap(bitmap, size, size, true);
-                    int x = (i % 3) * size;
-                    int y = (i / 3) * size;
-                    canvas.drawBitmap(scaledBitmap, x, y, null);
-                    if (inputStream != null) inputStream.close();
+                    try {
+                        InputStream inputStream = getContentResolver().openInputStream(selectedImageUris.get(i));
+                        Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+                        if (bitmap == null) continue;
+
+                        // 使用ML Kit检测人脸
+                        InputImage image = InputImage.fromBitmap(bitmap, 0);
+                        List<Face> faces = Tasks.await(faceDetector.process(image));
+
+                        Bitmap croppedBitmap = bitmap; // 默认使用原始图片
+                        if (!faces.isEmpty()) {
+                            Face face = faces.get(0);
+                            Landmark leftEye = face.getLandmark(Landmark.LANDMARK_LEFT_EYE);
+                            Landmark rightEye = face.getLandmark(Landmark.LANDMARK_RIGHT_EYE);
+                            if (leftEye != null && rightEye != null) {
+                                // 计算双眼区域（示例范围，可调整）
+                                float leftX = leftEye.getPosition().x;
+                                float leftY = leftEye.getPosition().y;
+                                float rightX = rightEye.getPosition().x;
+                                float rightY = rightEye.getPosition().y;
+
+                                int startX = (int) (Math.min(leftX, rightX) - 50);
+                                int startY = (int) (Math.min(leftY, rightY) - 50);
+                                int endX = (int) (Math.max(leftX, rightX) + 50);
+                                int endY = (int) (Math.max(leftY, rightY) + 50);
+
+                                // 确保区域在图片范围内
+                                startX = Math.max(0, startX);
+                                startY = Math.max(0, startY);
+                                endX = Math.min(bitmap.getWidth(), endX);
+                                endY = Math.min(bitmap.getHeight(), endY);
+
+                                if (endX > startX && endY > startY) {
+                                    croppedBitmap = Bitmap.createBitmap(bitmap, startX, startY, endX - startX, endY - startY);
+                                }
+                            }
+                        }
+
+                        // 缩放截取后的区域
+                        Bitmap scaledBitmap = Bitmap.createScaledBitmap(croppedBitmap, size, size, true);
+                        int x = (i % 3) * size;
+                        int y = (i / 3) * size;
+                        canvas.drawBitmap(scaledBitmap, x, y, null);
+
+                        if (inputStream != null) inputStream.close();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
                 runOnUiThread(() -> {
                     pbMerging.setVisibility(View.GONE);

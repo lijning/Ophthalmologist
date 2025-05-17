@@ -284,26 +284,28 @@ public class MergeActivity extends AppCompatActivity {
         new Thread(() -> {
             try {
                 int size = (int) getResources().getDisplayMetrics().density * 100;
-                mergedBitmap = Bitmap.createBitmap(size * 3, size * 3, Bitmap.Config.ARGB_8888);
+                // 调整画布高度为 3行 × 每行高度(size/2)，总高度为 size*1.5
+                mergedBitmap = Bitmap.createBitmap(size * 3, (size / 2) * 3, Bitmap.Config.ARGB_8888);
                 Canvas canvas = new Canvas(mergedBitmap);
 
                 for (int i = 0; i < selectedImageUris.size() && i < MAX_IMAGES; i++) {
                     try {
                         InputStream inputStream = getContentResolver().openInputStream(selectedImageUris.get(i));
                         Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-                        if (bitmap == null)
-                            continue;
+                        if (bitmap == null) continue;
 
-                        Bitmap croppedBitmap = processBitmap(bitmap); // 调用处理函数来裁剪图片，确保返回的是Bitmap对象，而不是InputStream
+                        Bitmap croppedBitmap = processBitmap(bitmap); 
 
-                        // 缩放截取后的区域
-                        Bitmap scaledBitmap = Bitmap.createScaledBitmap(croppedBitmap, size, size, true);
+                        // 关键修改：缩放为 2:1 比例（宽度size，高度size/2）
+                        Bitmap scaledBitmap = Bitmap.createScaledBitmap(croppedBitmap, size, size / 2, true);
+                        
+                        // 调整y坐标计算（每行高度为size/2）
                         int x = (i % 3) * size;
-                        int y = (i / 3) * size;
+                        int y = (i / 3) * (size / 2);
+                        
                         canvas.drawBitmap(scaledBitmap, x, y, null);
 
-                        if (inputStream != null)
-                            inputStream.close();
+                        if (inputStream != null) inputStream.close();
                     } catch (Exception e) {
                         Toast.makeText(this, String.format("第%d张处理失败", i), Toast.LENGTH_SHORT).show();
                         e.printStackTrace();
@@ -312,10 +314,8 @@ public class MergeActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     pbMerging.setVisibility(View.GONE);
                     btnDownloadResult.setVisibility(View.VISIBLE);
-                    // 展示合并结果到ImageView
                     ImageView ivMergedResult = findViewById(R.id.iv_merged_result);
                     ivMergedResult.setImageBitmap(mergedBitmap);
-                    // 保存合并后的Bitmap到成员变量
                 });
             } catch (Exception e) {
                 e.printStackTrace();

@@ -23,6 +23,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -208,7 +210,7 @@ public class MergeActivity extends AppCompatActivity {
         gvImagePreview.setAdapter(imageAdapter);
     }
 
-    private Bitmap processBitmap(Bitmap bitmap) {
+    private Bitmap processBitmap(Bitmap bitmap, int idx) {
         // 1. 检测人脸
         Mat mat = new Mat();
         Utils.bitmapToMat(bitmap, mat);
@@ -223,6 +225,7 @@ public class MergeActivity extends AppCompatActivity {
         }
         List<Rect> faceList = faces.toList();
         if (faceList.isEmpty()) {
+            Toast.makeText(this, String.format(Locale.CHINA, "第%d张未检测到人脸", idx), Toast.LENGTH_SHORT).show();
             return bitmap; // 未检测到人脸，返回原图
         }
     
@@ -237,6 +240,7 @@ public class MergeActivity extends AppCompatActivity {
         }
         List<Rect> eyeList = eyes.toList();
         if (eyeList.size() < 2) {
+            Toast.makeText(this,  String.format(Locale.CHINA, "第%d张未检测到双眼", idx), Toast.LENGTH_SHORT).show();
             return bitmap; // 未检测到至少2只眼睛，返回原图
         }
     
@@ -274,7 +278,6 @@ public class MergeActivity extends AppCompatActivity {
         return bitmap;
     }
 
-    @SuppressLint("DefaultLocale")
     private void mergeImages() {
         if (selectedImageUris.isEmpty()) {
             Toast.makeText(this, "请选择至少1张图片", Toast.LENGTH_SHORT).show();
@@ -294,7 +297,7 @@ public class MergeActivity extends AppCompatActivity {
                         Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
                         if (bitmap == null) continue;
 
-                        Bitmap croppedBitmap = processBitmap(bitmap); 
+                        Bitmap croppedBitmap = processBitmap(bitmap, i);
 
                         // 关键修改：缩放为 2:1 比例（宽度size，高度size/2）
                         Bitmap scaledBitmap = Bitmap.createScaledBitmap(croppedBitmap, size, size / 2, true);
@@ -307,7 +310,7 @@ public class MergeActivity extends AppCompatActivity {
 
                         if (inputStream != null) inputStream.close();
                     } catch (Exception e) {
-                        Toast.makeText(this, String.format("第%d张处理失败", i), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, String.format(Locate.CHINA, "第%d张处理失败", i), Toast.LENGTH_SHORT).show();
                         e.printStackTrace();
                     }
                 }

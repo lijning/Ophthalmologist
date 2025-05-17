@@ -11,6 +11,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.GridView;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -22,8 +23,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -50,6 +53,7 @@ public class MergeActivity extends AppCompatActivity {
     private ProgressBar pbMerging;
     private Button btnUploadImages, btnMergeImages, btnDownloadResult;
     private List<Uri> selectedImageUris = new ArrayList<>();
+    private List<Map<String, Object>> imageItems = new ArrayList<>();
     private SimpleAdapter imageAdapter;
 
     private final ActivityResultLauncher<Intent> imagePickerLauncher = registerForActivityResult(
@@ -86,6 +90,8 @@ public class MergeActivity extends AppCompatActivity {
                 }
             });
 
+    private TextView tvImageCount; // 新增：图片数量显示控件
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -96,13 +102,16 @@ public class MergeActivity extends AppCompatActivity {
         btnUploadImages = findViewById(R.id.btn_upload_images);
         btnMergeImages = findViewById(R.id.btn_merge_images);
         btnDownloadResult = findViewById(R.id.btn_download_result);
+        
+        // 新增：初始化图片数量显示控件（关键修复）
+        tvImageCount = findViewById(R.id.tv_image_count);
 
         imageAdapter = new SimpleAdapter(this,
-                new ArrayList<>(),
-                R.layout.item_image,
-                new String[] {
-                        "image" },
-                new int[] { R.id.iv_item_image });
+        imageItems,
+        R.layout.item_image,
+        new String[] {
+                "image" },
+        new int[] { R.id.iv_item_image });
         gvImagePreview.setAdapter(imageAdapter);
 
         // 初始化OpenCV眼睛检测器（需提前将haarcascade_eye.xml放入assets目录）
@@ -187,27 +196,31 @@ public class MergeActivity extends AppCompatActivity {
         for (Uri uri : selectedImageUris) {
             try {
                 InputStream inputStream = getContentResolver().openInputStream(uri);
-                Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-                bitmaps.add(bitmap);
-                if (inputStream != null)
-                    inputStream.close();
+                // 解码原始图片
+                Bitmap originalBitmap = BitmapFactory.decodeStream(inputStream);
+                if (originalBitmap != null) {
+                    // 关键修改：缩放到1280x720（16:9比例）
+//                    Bitmap scaledBitmap = Bitmap.createScaledBitmap(originalBitmap, 1280, 720, true);
+//                    bitmaps.add(scaledBitmap);
+                    bitmaps.add(originalBitmap);
+                    // 释放原始Bitmap内存（可选优化）
+                    originalBitmap.recycle();
+                } else {
+                    runOnUiThread(() -> Toast.makeText(this, "图片解码失败: " + uri.getLastPathSegment(), Toast.LENGTH_SHORT).show());
+                }
+                if (inputStream != null) inputStream.close();
             } catch (IOException e) {
                 e.printStackTrace();
+                runOnUiThread(() -> Toast.makeText(this, "加载图片失败: " + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
         }
-        List<java.util.HashMap<String, Bitmap>> data = new ArrayList<>();
-        for (Bitmap bm : bitmaps) {
-            java.util.HashMap<String, Bitmap> map = new java.util.HashMap<>();
-            map.put("image", bm);
-            data.add(map);
+        imageItems.clear();
+        for (Bitmap bitmap : bitmaps) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("image", bitmap);
+            imageItems.add(item);
         }
-        imageAdapter = new SimpleAdapter(this,
-                data,
-                R.layout.item_image,
-                new String[] { "image" },
-                new int[] { R.id.iv_item_image }) {
-        };
-        gvImagePreview.setAdapter(imageAdapter);
+        imageAdapter.notifyDataSetChanged();
     }
 
     private Bitmap processBitmap(Bitmap bitmap, int idx) {
@@ -265,12 +278,10 @@ public class MergeActivity extends AppCompatActivity {
         int startX = Math.max(0, centerX - targetWidth / 2);
         int startY = Math.max(0, centerY - targetHeight / 2);
         int endX = Math.min(bitmap.getWidth(), startX + targetWidth);
-        int endY = Math.min(bitmap.getHeight(), startY + targetHeight);
-    
         // 调整宽度保持2:1比例（可能因边界限制调整）
         targetWidth = endX - startX;
         targetHeight = targetWidth / 2;
-        endY = Math.min(bitmap.getHeight(), startY + targetHeight);
+        int endY = Math.min(bitmap.getHeight(), startY + targetHeight);
     
         if (endX > startX && endY > startY) {
             return Bitmap.createBitmap(bitmap, startX, startY, endX - startX, endY - startY);
@@ -310,7 +321,7 @@ public class MergeActivity extends AppCompatActivity {
 
                         if (inputStream != null) inputStream.close();
                     } catch (Exception e) {
-                        Toast.makeText(this, String.format(Locate.CHINA, "第%d张处理失败", i), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, String.format(Locale.CHINA, "第%d张处理失败", i), Toast.LENGTH_SHORT).show();
                         e.printStackTrace();
                     }
                 }

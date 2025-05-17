@@ -9,7 +9,7 @@
         android:id="@+id/btn_upload_images"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="上传图片（最多9张）"/>
+        android:text="选取图片（最多9张）"/>
 
     <GridView
         android:id="@+id/gv_image_preview"
@@ -50,4 +50,11 @@
         android:text="下载结果"
         android:visibility="gone"/>
 
+    <!-- 在合适位置添加以下代码 -->
+    <TextView
+        android:id="@+id/tv_image_count"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="16sp"
+        android:layout_margin="8dp"/>
 </LinearLayout>

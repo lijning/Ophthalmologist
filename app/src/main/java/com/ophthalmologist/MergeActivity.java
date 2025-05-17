@@ -100,9 +100,9 @@ public class MergeActivity extends AppCompatActivity {
         imageAdapter = new SimpleAdapter(this,
                 new ArrayList<>(),
                 R.layout.item_image,
-                new String[]{
-"image"},
-                new int[]{R.id.iv_item_image});
+                new String[] {
+                        "image" },
+                new int[] { R.id.iv_item_image });
         gvImagePreview.setAdapter(imageAdapter);
 
         // 初始化OpenCV眼睛检测器（需提前将haarcascade_eye.xml放入assets目录）
@@ -164,7 +164,8 @@ public class MergeActivity extends AppCompatActivity {
                 InputStream inputStream = getContentResolver().openInputStream(uri);
                 Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
                 bitmaps.add(bitmap);
-                if (inputStream != null) inputStream.close();
+                if (inputStream != null)
+                    inputStream.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -178,13 +179,41 @@ public class MergeActivity extends AppCompatActivity {
         imageAdapter = new SimpleAdapter(this,
                 data,
                 R.layout.item_image,
-                new String[]{"image"},
-                new int[]{R.id.iv_item_image}) {
+                new String[] { "image" },
+                new int[] { R.id.iv_item_image }) {
             public void setViewImage(ImageView v, Bitmap bm) {
                 v.setImageBitmap(bm);
             }
         };
         gvImagePreview.setAdapter(imageAdapter);
+    }
+
+    private Bitmap processBitmap(Bitmap bitmap) {
+        // 使用OpenCV检测眼睛
+        Mat mat = new Mat();
+        Utils.bitmapToMat(bitmap, mat); // Bitmap转Mat
+        Mat grayMat = new Mat();
+        Imgproc.cvtColor(mat, grayMat, Imgproc.COLOR_RGBA2GRAY);
+        Imgproc.equalizeHist(grayMat, grayMat);
+
+        MatOfRect eyes = new MatOfRect();
+        eyeCascade.detectMultiScale(grayMat, eyes, 1.1, 2, 0, new Size(30, 30), new Size());
+
+        List<Rect> eyeList = eyes.toList();
+        Bitmap croppedBitmap = bitmap;
+        if (!eyeList.isEmpty()) {
+            // 取第一个检测到的眼睛区域（示例逻辑，可根据需求调整）
+            Rect eyeRect = eyeList.get(0);
+            int startX = Math.max(0, eyeRect.x - 50);
+            int startY = Math.max(0, eyeRect.y - 50);
+            int endX = Math.min(bitmap.getWidth(), eyeRect.x + eyeRect.width + 50);
+            int endY = Math.min(bitmap.getHeight(), eyeRect.y + eyeRect.height + 50);
+
+            if (endX > startX && endY > startY) {
+                croppedBitmap = Bitmap.createBitmap(bitmap, startX, startY, endX - startX, endY - startY);
+            }
+        }
+        return croppedBitmap;
     }
 
     private void mergeImages() {
@@ -203,32 +232,10 @@ public class MergeActivity extends AppCompatActivity {
                     try {
                         InputStream inputStream = getContentResolver().openInputStream(selectedImageUris.get(i));
                         Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-                        if (bitmap == null) continue;
+                        if (bitmap == null)
+                            continue;
 
-                        // 使用OpenCV检测眼睛
-                        Mat mat = new Mat();
-                        Utils.bitmapToMat(bitmap, mat); // Bitmap转Mat
-                        Mat grayMat = new Mat();
-                        Imgproc.cvtColor(mat, grayMat, Imgproc.COLOR_RGBA2GRAY);
-                        Imgproc.equalizeHist(grayMat, grayMat);
-
-                        MatOfRect eyes = new MatOfRect();
-                        eyeCascade.detectMultiScale(grayMat, eyes, 1.1, 2, 0, new Size(30, 30), new Size());
-
-                        List<Rect> eyeList = eyes.toList();
-                        Bitmap croppedBitmap = bitmap;
-                        if (!eyeList.isEmpty()) {
-                            // 取第一个检测到的眼睛区域（示例逻辑，可根据需求调整）
-                            Rect eyeRect = eyeList.get(0);
-                            int startX = Math.max(0, eyeRect.x - 50);
-                            int startY = Math.max(0, eyeRect.y - 50);
-                            int endX = Math.min(bitmap.getWidth(), eyeRect.x + eyeRect.width + 50);
-                            int endY = Math.min(bitmap.getHeight(), eyeRect.y + eyeRect.height + 50);
-
-                            if (endX > startX && endY > startY) {
-                                croppedBitmap = Bitmap.createBitmap(bitmap, startX, startY, endX - startX, endY - startY);
-                            }
-                        }
+                        Bitmap croppedBitmap = processBitmap(bitmap); // 调用处理函数来裁剪图片，确保返回的是Bitmap对象，而不是InputStream
 
                         // 缩放截取后的区域
                         Bitmap scaledBitmap = Bitmap.createScaledBitmap(croppedBitmap, size, size, true);
@@ -236,7 +243,8 @@ public class MergeActivity extends AppCompatActivity {
                         int y = (i / 3) * size;
                         canvas.drawBitmap(scaledBitmap, x, y, null);
 
-                        if (inputStream != null) inputStream.close();
+                        if (inputStream != null)
+                            inputStream.close();
                     } catch (Exception e) {
                         e.printStackTrace();
                     }

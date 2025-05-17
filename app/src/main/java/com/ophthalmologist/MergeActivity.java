@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.view.View;
@@ -135,10 +136,17 @@ public class MergeActivity extends AppCompatActivity {
     }
 
     private void checkStoragePermission() {
-        if (ContextCompat.checkSelfPermission(this, "android.permission.READ_EXTERNAL_STORAGE") == PackageManager.PERMISSION_GRANTED) {
+        String requiredPermission;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // API 33+
+            requiredPermission = "android.permission.READ_MEDIA_IMAGES";
+        } else { // API < 33
+            requiredPermission = "android.permission.READ_EXTERNAL_STORAGE";
+        }
+
+        if (ContextCompat.checkSelfPermission(this, requiredPermission) == PackageManager.PERMISSION_GRANTED) {
             openImagePicker();
         } else {
-            requestPermissionLauncher.launch("android.permission.READ_EXTERNAL_STORAGE");
+            requestPermissionLauncher.launch(requiredPermission);
         }
     }
 

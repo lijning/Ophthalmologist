@@ -10,6 +10,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import android.widget.Button;
+import android.os.Build;
 
 import org.opencv.android.OpenCVLoader;
 
@@ -27,14 +28,29 @@ public class MainActivity extends AppCompatActivity {
 
         Button btnMergeEyePhotos = findViewById(R.id.btn_merge_eye_photos);
         btnMergeEyePhotos.setOnClickListener(v -> {
+            // 动态判断需要的权限（兼容Android 35+）
+            String[] requiredPermissions;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // API 33+（含Android 35）
+                requiredPermissions = new String[]{
+                    Manifest.permission.READ_MEDIA_IMAGES,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                };
+            } else { // 旧版本
+                requiredPermissions = new String[]{
+                    Manifest.permission.READ_EXTERNAL_STORAGE,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                };
+            }
+
             // 检查存储权限
-            if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                // 请求权限
-                ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1001);
-            } else {
+            if (ContextCompat.checkSelfPermission(MainActivity.this, 
+                    requiredPermissions[0]) == PackageManager.PERMISSION_GRANTED) {
                 // 已有权限，启动MergeActivity
                 Intent intent = new Intent(MainActivity.this, MergeActivity.class);
                 startActivity(intent);
+            } else {
+                // 请求权限
+                ActivityCompat.requestPermissions(MainActivity.this, requiredPermissions, 1001);
             }
         });
     }

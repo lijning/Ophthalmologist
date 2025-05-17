@@ -1,19 +1,18 @@
 package com.ophthalmologist;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Build;
 import android.os.Environment;
-import android.provider.MediaStore;
 import android.view.View;
 import android.widget.Button;
 import android.widget.GridView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
-import androidx.activity.result.ActivityResult;
-import androidx.activity.result.ActivityResultCallback;
+
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
@@ -38,6 +37,7 @@ import org.opencv.core.MatOfRect;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.android.Utils;
 
+/** @noinspection CallToPrintStackTrace*/
 public class MergeActivity extends AppCompatActivity {
 
     private static final int MAX_IMAGES = 9;
@@ -51,27 +51,24 @@ public class MergeActivity extends AppCompatActivity {
 
     private final ActivityResultLauncher<Intent> imagePickerLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
-            new ActivityResultCallback<ActivityResult>() {
-                @Override
-                public void onActivityResult(ActivityResult result) {
-                    if (result.getResultCode() == RESULT_OK) {
-                        Intent data = result.getData();
-                        if (data != null) {
-                            if (data.getClipData() != null) {
-                                int count = data.getClipData().getItemCount();
-                                if (count > MAX_IMAGES) {
-                                    Toast.makeText(MergeActivity.this, "最多选择9张图片", Toast.LENGTH_SHORT).show();
-                                    return;
-                                }
-                                for (int i = 0; i < count; i++) {
-                                    Uri imageUri = data.getClipData().getItemAt(i).getUri();
-                                    selectedImageUris.add(imageUri);
-                                }
-                            } else if (data.getData() != null) {
-                                selectedImageUris.add(data.getData());
+            result -> {
+                if (result.getResultCode() == RESULT_OK) {
+                    Intent data = result.getData();
+                    if (data != null) {
+                        if (data.getClipData() != null) {
+                            int count = data.getClipData().getItemCount();
+                            if (count > MAX_IMAGES) {
+                                Toast.makeText(MergeActivity.this, "最多选择9张图片", Toast.LENGTH_SHORT).show();
+                                return;
                             }
-                            updateImagePreview();
+                            for (int i = 0; i < count; i++) {
+                                Uri imageUri = data.getClipData().getItemAt(i).getUri();
+                                selectedImageUris.add(imageUri);
+                            }
+                        } else if (data.getData() != null) {
+                            selectedImageUris.add(data.getData());
                         }
+                        updateImagePreview();
                     }
                 }
             });
@@ -181,9 +178,6 @@ public class MergeActivity extends AppCompatActivity {
                 R.layout.item_image,
                 new String[] { "image" },
                 new int[] { R.id.iv_item_image }) {
-            public void setViewImage(ImageView v, Bitmap bm) {
-                v.setImageBitmap(bm);
-            }
         };
         gvImagePreview.setAdapter(imageAdapter);
     }
@@ -216,8 +210,9 @@ public class MergeActivity extends AppCompatActivity {
         return croppedBitmap;
     }
 
+    @SuppressLint("DefaultLocale")
     private void mergeImages() {
-        if (selectedImageUris.size() < 1) {
+        if (selectedImageUris.isEmpty()) {
             Toast.makeText(this, "请选择至少1张图片", Toast.LENGTH_SHORT).show();
             return;
         }
@@ -225,7 +220,7 @@ public class MergeActivity extends AppCompatActivity {
         new Thread(() -> {
             try {
                 int size = (int) getResources().getDisplayMetrics().density * 100;
-                Bitmap mergedBitmap = Bitmap.createBitmap(size * 3, size * 3, Bitmap.Config.ARGB_8888);
+                mergedBitmap = Bitmap.createBitmap(size * 3, size * 3, Bitmap.Config.ARGB_8888);
                 Canvas canvas = new Canvas(mergedBitmap);
 
                 for (int i = 0; i < selectedImageUris.size() && i < MAX_IMAGES; i++) {
@@ -246,6 +241,7 @@ public class MergeActivity extends AppCompatActivity {
                         if (inputStream != null)
                             inputStream.close();
                     } catch (Exception e) {
+                        Toast.makeText(this, String.format("第%d张处理失败", i), Toast.LENGTH_SHORT).show();
                         e.printStackTrace();
                     }
                 }

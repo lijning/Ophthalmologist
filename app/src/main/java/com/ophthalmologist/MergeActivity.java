@@ -43,6 +43,7 @@ public class MergeActivity extends AppCompatActivity {
     private static final int MAX_IMAGES = 9;
     private Bitmap mergedBitmap; // 保存合并后的Bitmap
     private CascadeClassifier eyeCascade; // OpenCV眼睛检测器
+    private CascadeClassifier faceCascade; // 新增：OpenCV人脸检测器
     private GridView gvImagePreview;
     private ProgressBar pbMerging;
     private Button btnUploadImages, btnMergeImages, btnDownloadResult;
@@ -127,6 +128,31 @@ public class MergeActivity extends AppCompatActivity {
             Toast.makeText(this, "加载模型失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
 
+        // 新增：初始化OpenCV人脸检测器
+        try {
+            InputStream faceIs = getAssets().open("haarcascade_frontalface_default.xml");
+            File faceCascadeDir = getDir("face_cascade", MODE_PRIVATE);
+            File faceCascadeFile = new File(faceCascadeDir, "haarcascade_frontalface_default.xml");
+            FileOutputStream faceOs = new FileOutputStream(faceCascadeFile);
+
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            while ((bytesRead = faceIs.read(buffer)) != -1) {
+                faceOs.write(buffer, 0, bytesRead);
+            }
+            faceIs.close();
+            faceOs.close();
+
+            faceCascade = new CascadeClassifier(faceCascadeFile.getAbsolutePath());
+            if (faceCascade.empty()) {
+                Toast.makeText(this, "未能加载人脸检测模型", Toast.LENGTH_SHORT).show();
+            }
+            faceCascadeDir.delete();
+        } catch (IOException e) {
+            e.printStackTrace();
+            Toast.makeText(this, "加载人脸模型失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+
         btnUploadImages.setOnClickListener(v -> checkStoragePermission());
         btnMergeImages.setOnClickListener(v -> mergeImages());
         btnDownloadResult.setOnClickListener(v -> saveMergedImage());
@@ -183,31 +209,69 @@ public class MergeActivity extends AppCompatActivity {
     }
 
     private Bitmap processBitmap(Bitmap bitmap) {
-        // 使用OpenCV检测眼睛
+        // 1. 检测人脸
         Mat mat = new Mat();
-        Utils.bitmapToMat(bitmap, mat); // Bitmap转Mat
+        Utils.bitmapToMat(bitmap, mat);
         Mat grayMat = new Mat();
         Imgproc.cvtColor(mat, grayMat, Imgproc.COLOR_RGBA2GRAY);
         Imgproc.equalizeHist(grayMat, grayMat);
-
-        MatOfRect eyes = new MatOfRect();
-        eyeCascade.detectMultiScale(grayMat, eyes, 1.1, 2, 0, new Size(30, 30), new Size());
-
-        List<Rect> eyeList = eyes.toList();
-        Bitmap croppedBitmap = bitmap;
-        if (!eyeList.isEmpty()) {
-            // 取第一个检测到的眼睛区域（示例逻辑，可根据需求调整）
-            Rect eyeRect = eyeList.get(0);
-            int startX = Math.max(0, eyeRect.x - 50);
-            int startY = Math.max(0, eyeRect.y - 50);
-            int endX = Math.min(bitmap.getWidth(), eyeRect.x + eyeRect.width + 50);
-            int endY = Math.min(bitmap.getHeight(), eyeRect.y + eyeRect.height + 50);
-
-            if (endX > startX && endY > startY) {
-                croppedBitmap = Bitmap.createBitmap(bitmap, startX, startY, endX - startX, endY - startY);
-            }
+    
+        // 检测人脸
+        MatOfRect faces = new MatOfRect();
+        if (faceCascade != null && !faceCascade.empty()) {
+            faceCascade.detectMultiScale(grayMat, faces, 1.1, 3, 0, new Size(50, 50), new Size());
         }
-        return croppedBitmap;
+        List<Rect> faceList = faces.toList();
+        if (faceList.isEmpty()) {
+            return bitmap; // 未检测到人脸，返回原图
+        }
+    
+        // 取第一个人脸区域
+        Rect faceRect = faceList.get(0);
+        Mat faceMat = new Mat(grayMat, faceRect); // 截取人脸区域的Mat
+    
+        // 2. 在人脸区域内检测眼睛
+        MatOfRect eyes = new MatOfRect();
+        if (eyeCascade != null && !eyeCascade.empty()) {
+            eyeCascade.detectMultiScale(faceMat, eyes, 1.1, 2, 0, new Size(30, 30), new Size());
+        }
+        List<Rect> eyeList = eyes.toList();
+        if (eyeList.size() < 2) {
+            return bitmap; // 未检测到至少2只眼睛，返回原图
+        }
+    
+        // 3. 计算左右眼中间点（假设前两个是左右眼）
+        Rect leftEye = eyeList.get(0);
+        Rect rightEye = eyeList.get(1);
+        // 注意：人脸区域是原图的子区域，需要转换为原图坐标
+        int leftEyeX = faceRect.x + leftEye.x + leftEye.width / 2;
+        int leftEyeY = faceRect.y + leftEye.y + leftEye.height / 2;
+        int rightEyeX = faceRect.x + rightEye.x + rightEye.width / 2;
+        int rightEyeY = faceRect.y + rightEye.y + rightEye.height / 2;
+    
+        // 中间点坐标
+        int centerX = (leftEyeX + rightEyeX) / 2;
+        int centerY = (leftEyeY + rightEyeY) / 2;
+    
+        // 4. 计算2:1长宽比的截取区域（假设宽度为目标宽度，高度为宽度/2）
+        int targetWidth = Math.min(bitmap.getWidth(), faceRect.width); // 以人脸宽度为基准
+        int targetHeight = targetWidth / 2;
+    
+        // 确保截取区域不超出原图边界
+        int startX = Math.max(0, centerX - targetWidth / 2);
+        int startY = Math.max(0, centerY - targetHeight / 2);
+        int endX = Math.min(bitmap.getWidth(), startX + targetWidth);
+        int endY = Math.min(bitmap.getHeight(), startY + targetHeight);
+    
+        // 调整宽度保持2:1比例（可能因边界限制调整）
+        targetWidth = endX - startX;
+        targetHeight = targetWidth / 2;
+        endY = Math.min(bitmap.getHeight(), startY + targetHeight);
+    
+        if (endX > startX && endY > startY) {
+            return Bitmap.createBitmap(bitmap, startX, startY, endX - startX, endY - startY);
+        }
+        return bitmap;
     }
 
     @SuppressLint("DefaultLocale")

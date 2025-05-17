@@ -25,5 +25,10 @@ local.properties
 # 临时文件
 *.tmp
 
+# 性能分析文件
+*.hprof
+
 # dependencies 目录（如果需要版本控制）
 opencv-4.5.5-android-sdk/
+opencv-4.8.0-android-sdk/
+opencv-4.9.0-android-sdk/

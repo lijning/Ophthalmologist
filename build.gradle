@@ -16,6 +16,11 @@ allprojects {
             url 'https://maven.aliyun.com/repository/google'
             name 'aliyunGoogle'
         }
+        maven {
+            url 'https://maven.aliyun.com/repository/public'
+            name 'aliyunPublic'
+        }
+        maven { url 'https://www.jitpack.io' }
         google()
         mavenCentral()
 

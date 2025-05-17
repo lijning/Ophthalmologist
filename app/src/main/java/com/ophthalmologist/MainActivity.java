@@ -11,9 +11,17 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import android.widget.Button;
 
+import org.opencv.android.OpenCVLoader;
+
 public class MainActivity extends AppCompatActivity {
+    static {
+        System.loadLibrary("opencv_java4");
+    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        if (!OpenCVLoader.initDebug()) {
+            Toast.makeText(this, "OpenCV初始化失败", Toast.LENGTH_SHORT).show();
+        }
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 

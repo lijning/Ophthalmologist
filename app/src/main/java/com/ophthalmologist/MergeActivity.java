@@ -28,13 +28,14 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.widget.ImageView;
 import android.widget.SimpleAdapter;
-import com.google.mlkit.vision.common.InputImage;
-import com.google.mlkit.vision.face.Face;
-import com.google.mlkit.vision.face.FaceDetection;
-import com.google.mlkit.vision.face.FaceDetector;
-import com.google.mlkit.vision.face.FaceDetectorOptions;
-import com.google.mlkit.vision.face.Landmark;
-import com.google.android.gms.tasks.Tasks;
+
+import org.opencv.objdetect.CascadeClassifier;
+import org.opencv.core.Mat;
+import org.opencv.core.Size;
+import org.opencv.core.Rect;
+import org.opencv.core.MatOfRect;
+import org.opencv.imgproc.Imgproc;
+import org.opencv.android.Utils;
 
 public class MergeActivity extends AppCompatActivity {
 
@@ -200,16 +201,17 @@ public class MergeActivity extends AppCompatActivity {
                         Mat mat = new Mat();
                         Utils.bitmapToMat(bitmap, mat); // Bitmap转Mat
                         Mat grayMat = new Mat();
-                        Imgproc.cvtColor(mat, grayMat, Imgproc.COLOR_RGBA2GRAY); // 转灰度图
-                        Imgproc.equalizeHist(grayMat, grayMat); // 直方图均衡化
+                        Imgproc.cvtColor(mat, grayMat, Imgproc.COLOR_RGBA2GRAY);
+                        Imgproc.equalizeHist(grayMat, grayMat);
 
-                        List<Rect> eyes = new ArrayList<>();
+                        MatOfRect eyes = new MatOfRect();
                         eyeCascade.detectMultiScale(grayMat, eyes, 1.1, 2, 0, new Size(30, 30), new Size());
 
-                        Bitmap croppedBitmap = bitmap; // 默认使用原始图片
-                        if (!eyes.isEmpty()) {
+                        List<Rect> eyeList = eyes.toList();
+                        Bitmap croppedBitmap = bitmap;
+                        if (!eyeList.isEmpty()) {
                             // 取第一个检测到的眼睛区域（示例逻辑，可根据需求调整）
-                            Rect eyeRect = eyes.get(0);
+                            Rect eyeRect = eyeList.get(0);
                             int startX = Math.max(0, eyeRect.x - 50);
                             int startY = Math.max(0, eyeRect.y - 50);
                             int endX = Math.min(bitmap.getWidth(), eyeRect.x + eyeRect.width + 50);

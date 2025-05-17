@@ -40,7 +40,7 @@ public class MergeActivity extends AppCompatActivity {
 
     private static final int MAX_IMAGES = 9;
     private Bitmap mergedBitmap; // 保存合并后的Bitmap
-    private FaceDetector faceDetector; // ML Kit人脸检测器
+    private CascadeClassifier eyeCascade; // OpenCV眼睛检测器
     private GridView gvImagePreview;
     private ProgressBar pbMerging;
     private Button btnUploadImages, btnMergeImages, btnDownloadResult;
@@ -103,12 +103,30 @@ public class MergeActivity extends AppCompatActivity {
                 new int[]{R.id.iv_item_image});
         gvImagePreview.setAdapter(imageAdapter);
 
-        // 初始化ML Kit人脸检测器
-        FaceDetectorOptions options = new FaceDetectorOptions.Builder()
-                .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
-                .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
-                .build();
-        faceDetector = FaceDetection.getClient(options);
+        // 初始化OpenCV眼睛检测器（需提前将haarcascade_eye.xml放入assets目录）
+        try {
+            InputStream is = getAssets().open("haarcascade_eye.xml");
+            File cascadeDir = getDir("cascade", MODE_PRIVATE);
+            File cascadeFile = new File(cascadeDir, "haarcascade_eye.xml");
+            FileOutputStream os = new FileOutputStream(cascadeFile);
+
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            while ((bytesRead = is.read(buffer)) != -1) {
+                os.write(buffer, 0, bytesRead);
+            }
+            is.close();
+            os.close();
+
+            eyeCascade = new CascadeClassifier(cascadeFile.getAbsolutePath());
+            if (eyeCascade.empty()) {
+                Toast.makeText(this, "未能加载眼睛检测模型", Toast.LENGTH_SHORT).show();
+            }
+            cascadeDir.delete();
+        } catch (IOException e) {
+            e.printStackTrace();
+            Toast.makeText(this, "加载模型失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
 
         btnUploadImages.setOnClickListener(v -> checkStoragePermission());
         btnMergeImages.setOnClickListener(v -> mergeImages());
@@ -178,36 +196,27 @@ public class MergeActivity extends AppCompatActivity {
                         Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
                         if (bitmap == null) continue;
 
-                        // 使用ML Kit检测人脸
-                        InputImage image = InputImage.fromBitmap(bitmap, 0);
-                        List<Face> faces = Tasks.await(faceDetector.process(image));
+                        // 使用OpenCV检测眼睛
+                        Mat mat = new Mat();
+                        Utils.bitmapToMat(bitmap, mat); // Bitmap转Mat
+                        Mat grayMat = new Mat();
+                        Imgproc.cvtColor(mat, grayMat, Imgproc.COLOR_RGBA2GRAY); // 转灰度图
+                        Imgproc.equalizeHist(grayMat, grayMat); // 直方图均衡化
+
+                        List<Rect> eyes = new ArrayList<>();
+                        eyeCascade.detectMultiScale(grayMat, eyes, 1.1, 2, 0, new Size(30, 30), new Size());
 
                         Bitmap croppedBitmap = bitmap; // 默认使用原始图片
-                        if (!faces.isEmpty()) {
-                            Face face = faces.get(0);
-                            Landmark leftEye = face.getLandmark(Landmark.LANDMARK_LEFT_EYE);
-                            Landmark rightEye = face.getLandmark(Landmark.LANDMARK_RIGHT_EYE);
-                            if (leftEye != null && rightEye != null) {
-                                // 计算双眼区域（示例范围，可调整）
-                                float leftX = leftEye.getPosition().x;
-                                float leftY = leftEye.getPosition().y;
-                                float rightX = rightEye.getPosition().x;
-                                float rightY = rightEye.getPosition().y;
+                        if (!eyes.isEmpty()) {
+                            // 取第一个检测到的眼睛区域（示例逻辑，可根据需求调整）
+                            Rect eyeRect = eyes.get(0);
+                            int startX = Math.max(0, eyeRect.x - 50);
+                            int startY = Math.max(0, eyeRect.y - 50);
+                            int endX = Math.min(bitmap.getWidth(), eyeRect.x + eyeRect.width + 50);
+                            int endY = Math.min(bitmap.getHeight(), eyeRect.y + eyeRect.height + 50);
 
-                                int startX = (int) (Math.min(leftX, rightX) - 50);
-                                int startY = (int) (Math.min(leftY, rightY) - 50);
-                                int endX = (int) (Math.max(leftX, rightX) + 50);
-                                int endY = (int) (Math.max(leftY, rightY) + 50);
-
-                                // 确保区域在图片范围内
-                                startX = Math.max(0, startX);
-                                startY = Math.max(0, startY);
-                                endX = Math.min(bitmap.getWidth(), endX);
-                                endY = Math.min(bitmap.getHeight(), endY);
-
-                                if (endX > startX && endY > startY) {
-                                    croppedBitmap = Bitmap.createBitmap(bitmap, startX, startY, endX - startX, endY - startY);
-                                }
+                            if (endX > startX && endY > startY) {
+                                croppedBitmap = Bitmap.createBitmap(bitmap, startX, startY, endX - startX, endY - startY);
                             }
                         }
 

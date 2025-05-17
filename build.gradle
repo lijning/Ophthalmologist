@@ -12,8 +12,12 @@ buildscript {
 allprojects {
 
     repositories {
+        maven {
+            url 'https://maven.aliyun.com/repository/google'
+            name 'aliyunGoogle'
+        }
         google()
         mavenCentral()
-        maven { url 'https://www.jitpack.io' }
+
     }
 }

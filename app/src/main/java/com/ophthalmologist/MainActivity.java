@@ -15,12 +15,13 @@ import android.util.Log;
 
 import org.opencv.android.OpenCVLoader;
 
-private static final String TAG = "MainActivity";
-
 public class MainActivity extends AppCompatActivity {
+    private static final String TAG="MainActivity";
+
     static {
         System.loadLibrary("opencv_java4");
     }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         if (!OpenCVLoader.initDebug()) {
@@ -34,19 +35,19 @@ public class MainActivity extends AppCompatActivity {
             // 动态判断需要的权限（兼容Android 35+）
             String[] requiredPermissions;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // API 33+（含Android 35）
-                requiredPermissions = new String[]{
-                    Manifest.permission.READ_MEDIA_IMAGES,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                requiredPermissions = new String[] {
+                        Manifest.permission.READ_MEDIA_IMAGES,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE
                 };
             } else { // 旧版本
-                requiredPermissions = new String[]{
-                    Manifest.permission.READ_EXTERNAL_STORAGE,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                requiredPermissions = new String[] {
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE
                 };
             }
 
             // 检查存储权限
-            if (ContextCompat.checkSelfPermission(MainActivity.this, 
+            if (ContextCompat.checkSelfPermission(MainActivity.this,
                     requiredPermissions[0]) == PackageManager.PERMISSION_GRANTED) {
                 // 已有权限，启动MergeActivity
                 Intent intent = new Intent(MainActivity.this, MergeActivity.class);
@@ -59,7 +60,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+            @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == 1001) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {

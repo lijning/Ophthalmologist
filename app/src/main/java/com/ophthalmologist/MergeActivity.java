@@ -13,6 +13,7 @@ import android.widget.GridView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.util.Log;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -42,8 +43,10 @@ import org.opencv.core.MatOfRect;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.android.Utils;
 
-/** @noinspection CallToPrintStackTrace*/
+import android.util.Log;
+
 public class MergeActivity extends AppCompatActivity {
+    private static final String TAG = "MergeActivity";
 
     private static final int MAX_IMAGES = 9;
     private Bitmap mergedBitmap; // 保存合并后的Bitmap
@@ -102,16 +105,16 @@ public class MergeActivity extends AppCompatActivity {
         btnUploadImages = findViewById(R.id.btn_upload_images);
         btnMergeImages = findViewById(R.id.btn_merge_images);
         btnDownloadResult = findViewById(R.id.btn_download_result);
-        
+
         // 新增：初始化图片数量显示控件（关键修复）
         tvImageCount = findViewById(R.id.tv_image_count);
 
         imageAdapter = new SimpleAdapter(this,
-        imageItems,
-        R.layout.item_image,
-        new String[] {
-                "image" },
-        new int[] { R.id.iv_item_image });
+                imageItems,
+                R.layout.item_image,
+                new String[] {
+                        "image" },
+                new int[] { R.id.iv_item_image });
         gvImagePreview.setAdapter(imageAdapter);
 
         // 初始化OpenCV眼睛检测器（需提前将haarcascade_eye.xml放入assets目录）
@@ -135,7 +138,8 @@ public class MergeActivity extends AppCompatActivity {
             }
             cascadeDir.delete();
         } catch (IOException e) {
-            e.printStackTrace();
+            // 眼睛检测模型加载失败
+            Log.e(TAG, "加载模型失败", e);
             Toast.makeText(this, "加载模型失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
 
@@ -160,7 +164,7 @@ public class MergeActivity extends AppCompatActivity {
             }
             faceCascadeDir.delete();
         } catch (IOException e) {
-            e.printStackTrace();
+            Log.e(TAG, "加载人脸模型失败", e);
             Toast.makeText(this, "加载人脸模型失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
 
@@ -199,17 +203,15 @@ public class MergeActivity extends AppCompatActivity {
                 // 解码原始图片
                 Bitmap originalBitmap = BitmapFactory.decodeStream(inputStream);
                 if (originalBitmap != null) {
-                    // 关键修改：缩放到1280x720（16:9比例）
-//                    Bitmap scaledBitmap = Bitmap.createScaledBitmap(originalBitmap, 1280, 720, true);
-//                    bitmaps.add(scaledBitmap);
                     bitmaps.add(originalBitmap);
-                    // 移除提前回收逻辑，避免显示时Bitmap已被释放
                 } else {
-                    runOnUiThread(() -> Toast.makeText(this, "图片解码失败: " + uri.getLastPathSegment(), Toast.LENGTH_SHORT).show());
+                    runOnUiThread(() -> Toast.makeText(this, "图片解码失败: " + uri.getLastPathSegment(), Toast.LENGTH_SHORT)
+                            .show());
                 }
-                if (inputStream != null) inputStream.close();
+                if (inputStream != null)
+                    inputStream.close();
             } catch (IOException e) {
-                e.printStackTrace();
+                Log.e(TAG, "updateImagePreview", e);
                 runOnUiThread(() -> Toast.makeText(this, "加载图片失败: " + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
         }
@@ -230,7 +232,7 @@ public class MergeActivity extends AppCompatActivity {
         Mat grayMat = new Mat();
         Imgproc.cvtColor(mat, grayMat, Imgproc.COLOR_RGBA2GRAY);
         Imgproc.equalizeHist(grayMat, grayMat);
-    
+
         // 检测人脸
         MatOfRect faces = new MatOfRect();
         if (faceCascade != null && !faceCascade.empty()) {
@@ -241,11 +243,11 @@ public class MergeActivity extends AppCompatActivity {
             Toast.makeText(this, String.format(Locale.CHINA, "第%d张未检测到人脸", idx), Toast.LENGTH_SHORT).show();
             return bitmap; // 未检测到人脸，返回原图
         }
-    
+
         // 取第一个人脸区域
         Rect faceRect = faceList.get(0);
         Mat faceMat = new Mat(grayMat, faceRect); // 截取人脸区域的Mat
-    
+
         // 2. 在人脸区域内检测眼睛
         MatOfRect eyes = new MatOfRect();
         if (eyeCascade != null && !eyeCascade.empty()) {
@@ -253,10 +255,10 @@ public class MergeActivity extends AppCompatActivity {
         }
         List<Rect> eyeList = eyes.toList();
         if (eyeList.size() < 2) {
-            Toast.makeText(this,  String.format(Locale.CHINA, "第%d张未检测到双眼", idx), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, String.format(Locale.CHINA, "第%d张未检测到双眼", idx), Toast.LENGTH_SHORT).show();
             return bitmap; // 未检测到至少2只眼睛，返回原图
         }
-    
+
         // 3. 计算左右眼中间点（假设前两个是左右眼）
         Rect leftEye = eyeList.get(0);
         Rect rightEye = eyeList.get(1);
@@ -265,15 +267,15 @@ public class MergeActivity extends AppCompatActivity {
         int leftEyeY = faceRect.y + leftEye.y + leftEye.height / 2;
         int rightEyeX = faceRect.x + rightEye.x + rightEye.width / 2;
         int rightEyeY = faceRect.y + rightEye.y + rightEye.height / 2;
-    
+
         // 中间点坐标
         int centerX = (leftEyeX + rightEyeX) / 2;
         int centerY = (leftEyeY + rightEyeY) / 2;
-    
+
         // 4. 计算2:1长宽比的截取区域（假设宽度为目标宽度，高度为宽度/2）
         int targetWidth = Math.min(bitmap.getWidth(), faceRect.width); // 以人脸宽度为基准
         int targetHeight = targetWidth / 2;
-    
+
         // 确保截取区域不超出原图边界
         int startX = Math.max(0, centerX - targetWidth / 2);
         int startY = Math.max(0, centerY - targetHeight / 2);
@@ -282,7 +284,7 @@ public class MergeActivity extends AppCompatActivity {
         targetWidth = endX - startX;
         targetHeight = targetWidth / 2;
         int endY = Math.min(bitmap.getHeight(), startY + targetHeight);
-    
+
         if (endX > startX && endY > startY) {
             return Bitmap.createBitmap(bitmap, startX, startY, endX - startX, endY - startY);
         }
@@ -306,23 +308,27 @@ public class MergeActivity extends AppCompatActivity {
                     try {
                         InputStream inputStream = getContentResolver().openInputStream(selectedImageUris.get(i));
                         Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
-                        if (bitmap == null) continue;
+                        if (bitmap == null)
+                            continue;
 
                         Bitmap croppedBitmap = processBitmap(bitmap, i);
 
                         // 关键修改：缩放为 2:1 比例（宽度size，高度size/2）
                         Bitmap scaledBitmap = Bitmap.createScaledBitmap(croppedBitmap, size, size / 2, true);
-                        
+
                         // 调整y坐标计算（每行高度为size/2）
                         int x = (i % 3) * size;
                         int y = (i / 3) * (size / 2);
-                        
+
                         canvas.drawBitmap(scaledBitmap, x, y, null);
 
-                        if (inputStream != null) inputStream.close();
+                        if (inputStream != null)
+                            inputStream.close();
                     } catch (Exception e) {
-                        Toast.makeText(this, String.format(Locale.CHINA, "第%d张处理失败", i), Toast.LENGTH_SHORT).show();
-                        e.printStackTrace();
+                        final int currentIndex = i;
+                        runOnUiThread(() -> Toast.makeText(this, String.format(Locale.CHINA, "第%d张处理失败", currentIndex),
+                                Toast.LENGTH_SHORT).show());
+                        Log.e(TAG, "mergeImages one image", e);
                     }
                 }
                 runOnUiThread(() -> {
@@ -332,7 +338,7 @@ public class MergeActivity extends AppCompatActivity {
                     ivMergedResult.setImageBitmap(mergedBitmap);
                 });
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e(TAG, "mergeImages all image", e);
                 runOnUiThread(() -> {
                     pbMerging.setVisibility(View.GONE);
                     Toast.makeText(MergeActivity.this, "合并失败", Toast.LENGTH_SHORT).show();

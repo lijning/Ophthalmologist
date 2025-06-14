@@ -11,6 +11,25 @@ android {
         minSdkVersion 21
         targetSdkVersion 33
     }
+
+    signingConfigs {
+        release {
+            storeFile file("your-release-key.jks")
+            storePassword "your-store-password"
+            keyAlias "your-key-alias"
+            keyPassword "your-key-password"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+    }
+
     sourceCompatibility = '17'
     targetCompatibility = '17'
 
@@ -27,4 +46,12 @@ dependencies {
     implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.8.0'
     implementation 'com.google.android.gms:play-services-vision:20.1.3'
     implementation project(':opencv')
+    // 混淆时保留OpenCV类（根据实际依赖调整）
+    android {
+        buildTypes {
+            release {
+                proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            }
+        }
+    }
 }

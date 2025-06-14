@@ -11,8 +11,11 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import android.widget.Button;
 import android.os.Build;
+import android.util.Log;
 
 import org.opencv.android.OpenCVLoader;
+
+private static final String TAG = "MainActivity";
 
 public class MainActivity extends AppCompatActivity {
     static {

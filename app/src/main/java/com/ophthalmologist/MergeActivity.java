@@ -203,8 +203,7 @@ public class MergeActivity extends AppCompatActivity {
 //                    Bitmap scaledBitmap = Bitmap.createScaledBitmap(originalBitmap, 1280, 720, true);
 //                    bitmaps.add(scaledBitmap);
                     bitmaps.add(originalBitmap);
-                    // 释放原始Bitmap内存（可选优化）
-                    originalBitmap.recycle();
+                    // 移除提前回收逻辑，避免显示时Bitmap已被释放
                 } else {
                     runOnUiThread(() -> Toast.makeText(this, "图片解码失败: " + uri.getLastPathSegment(), Toast.LENGTH_SHORT).show());
                 }
@@ -221,6 +220,7 @@ public class MergeActivity extends AppCompatActivity {
             imageItems.add(item);
         }
         imageAdapter.notifyDataSetChanged();
+        runOnUiThread(() -> Toast.makeText(this, "已加载" + imageItems.size() + "张图片", Toast.LENGTH_SHORT).show());
     }
 
     private Bitmap processBitmap(Bitmap bitmap, int idx) {
